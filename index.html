@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <link rel="apple-touch-icon" type="image/png"
+        href="https://cpwebassets.codepen.io/assets/favicon/apple-touch-icon-5ae1a0698dcc2402e9712f7d01ed509a57814f994c660df9f7a952f3060705ee.png" />
+
+    <meta name="apple-mobile-web-app-title" content="CodePen">
+
+    <link rel="shortcut icon" type="image/x-icon"
+        href="https://cpwebassets.codepen.io/assets/favicon/favicon-aec34940fbc1a6e787974dcd360f2c6b63348d4b1f4e06c77743096d55480f33.ico" />
+
+    <link rel="mask-icon" type="image/x-icon"
+        href="https://cpwebassets.codepen.io/assets/favicon/logo-pin-b4b4269c16397ad2f0f7a01bcdf513a1994f4c94b8af2f191c09eb0d601762b1.svg"
+        color="#111" />
+
+
+    <script src="https://cpwebassets.codepen.io/assets/packs/js/authorizeDataCapture-15b448c3d7ff64541355.js"></script>
+
+
+    <title>CodePen - Cropper.js integration with multiple image choosing and showing them in canvas.</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.4.0/cropper.css'>
+
+    <style>
+        #galleryImages,
+        #cropper {
+            width: 100%;
+            float: left;
+        }
+
+        canvas {
+            max-width: 100%;
+            display: inline-block;
+        }
+
+        #cropperImg {
+            /*max-width: 0;
+  max-height: 0;*/
+        }
+
+        #cropImageBtn {
+            display: none;
+        }
+
+        img {
+            width: 100%;
+        }
+
+        .img-preview {
+            float: left;
+        }
+
+        .singleImageCanvasContainer {
+            max-width: 300px;
+            display: inline-block;
+            position: relative;
+            margin: 2px;
+        }
+
+        .singleImageCanvasCloseBtn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+        }
+    </style>
+
+    <script>
+        window.console = window.console || function (t) { };
+    </script>
+
+
+
+    <script>
+        if (document.location.search.match(/type=embed/gi)) {
+            window.parent.postMessage("resize", "*");
+        }
+    </script>
+
+
+</head>
+
+<body>
+    <form>
+    <input type="file" id="imageCropFileInput" multiple="" accept=".jpg,.jpeg,.png">
+    <input type="text" id="profile_img_data">
+    <div class="img-preview"></div>
+    <div id="galleryImages"></div>
+    <div id="cropper">
+        <canvas id="cropperImg" width="0" height="0"></canvas>
+        <button type='button' class="cropImageBtn" id="cropImageBtn">Crop</button>
+    </div>
+    <div class= "obutton feature2">
+        <button type='button' class="reserve-button">Reserve Book</button>
+    </div>
+</form>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    <script
+        src="https://cpwebassets.codepen.io/assets/common/stopExecutionOnTimeout-2c7831bb44f98c1391d6a4ffda0e1fd302503391ca806e7fcc7b9b87197aec26.js"></script>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.4.0/cropper.js'></script>
+    <script id="rendered-js">
+        var c;
+        var galleryImagesContainer = document.getElementById('galleryImages');
+        var imageCropFileInput = document.getElementById('imageCropFileInput');
+        var cropperImageInitCanvas = document.getElementById('cropperImg');
+        var cropImageButton = document.getElementById('cropImageBtn');
+        var dt = new DataTransfer();
+        // Crop Function On change
+        function imagesPreview(input) {
+            var cropper;
+            galleryImagesContainer.innerHTML = '';
+            dt = new DataTransfer();              
+            var img = [];
+            if (cropperImageInitCanvas.cropper) {
+                cropperImageInitCanvas.cropper.destroy();
+                cropImageButton.style.display = 'none';
+                cropperImageInitCanvas.width = 0;
+                cropperImageInitCanvas.height = 0;
+            }
+            if (input.files.length) {
+                document.getElementById('cropper').style.display = 'block';          
+                var i = 0;
+                var index = 0;
+                for (let singleFile of input.files) {
+                    dt.items.add(singleFile);
+                    var reader = new FileReader();
+                    reader.onload = function (event) {
+                        var blobUrl = event.target.result;
+                       
+                        img.push(new Image());
+                        img[i].onload = function (e) {
+                            // Canvas Container                                                      
+                            console.log(singleFile.name)
+                            var singleCanvasImageContainer = document.createElement('div');
+                            singleCanvasImageContainer.id = 'singleImageCanvasContainer' + index;
+                            singleCanvasImageContainer.className = 'singleImageCanvasContainer';
+                            // Canvas Close Btn
+                            var singleCanvasImageCloseBtn = document.createElement('button');
+                            var singleCanvasImageCloseBtnText = document.createTextNode('Close');
+                            // var singleCanvasImageCloseBtnText = document.createElement('i');
+                            // singleCanvasImageCloseBtnText.className = 'fa fa-times';
+                            //singleCanvasImageCloseBtn.id = index; //'singleImageCanvasCloseBtn' + index;
+                            singleCanvasImageCloseBtn.id = singleFile.name;
+                            singleCanvasImageCloseBtn.className = 'singleImageCanvasCloseBtn';
+                            singleCanvasImageCloseBtn.onclick = function () { removeSingleCanvas(this); };
+                            singleCanvasImageCloseBtn.appendChild(singleCanvasImageCloseBtnText);
+                            singleCanvasImageContainer.appendChild(singleCanvasImageCloseBtn);
+                            // Image Canvas
+                            var canvas = document.createElement('canvas');
+                            canvas.id = 'imageCanvas' + index;
+                            canvas.className = 'imageCanvas singleImageCanvas';
+                            canvas.width = e.currentTarget.width;
+                            canvas.height = e.currentTarget.height;
+                            canvas.onclick = function () { cropInit(canvas.id); };
+                            singleCanvasImageContainer.appendChild(canvas);
+                            // Canvas Context
+                            var ctx = canvas.getContext('2d');
+                            ctx.drawImage(e.currentTarget, 0, 0);
+                            // galleryImagesContainer.append(canvas);
+                            galleryImagesContainer.appendChild(singleCanvasImageContainer);
+                            while (document.querySelectorAll('.singleImageCanvas').length == input.files.length) {
+                                if (window.CP.shouldStopExecution(0)) break;
+                                var allCanvasImages = document.querySelectorAll('.singleImageCanvas')[0].getAttribute('id');
+                                cropInit(allCanvasImages);
+                                break;
+                            } window.CP.exitedLoop(0);;
+                            urlConversion();
+                            index++;
+                        };
+                        img[i].src = blobUrl;
+                        i++;
+                    };
+                    reader.readAsDataURL(singleFile);
+                }
+                // addCropButton();
+                // cropImageButton.style.display = 'block';
+            }
+        }
+        imageCropFileInput.addEventListener("change", function (event) {
+            imagesPreview(event.target);
+        });
+        // Initialize Cropper
+        function cropInit(selector) {
+            c = document.getElementById(selector);
+            console.log(document.getElementById(selector));
+            if (cropperImageInitCanvas.cropper) {
+                cropperImageInitCanvas.cropper.destroy();
+            }
+            var allCloseButtons = document.querySelectorAll('.singleImageCanvasCloseBtn');
+            for (let element of allCloseButtons) {
+                element.style.display = 'block';
+            }
+            //c.previousSibling.style.display = 'none';
+            // c.id = croppedImg;
+            var ctx = c.getContext('2d');
+            var imgData = ctx.getImageData(0, 0, c.width, c.height);
+            var image = cropperImageInitCanvas;
+            image.width = c.width;
+            image.height = c.height;
+            var ctx = image.getContext('2d');
+            ctx.putImageData(imgData, 0, 0);
+            cropper = new Cropper(image, {
+                aspectRatio: 1 / 1,
+                preview: '.img-preview',
+                crop: function (event) {
+                    // console.log(event.detail.x);
+                    // console.log(event.detail.y);
+                    // console.log(event.detail.width);
+                    // console.log(event.detail.height);
+                    // console.log(event.detail.rotate);
+                    // console.log(event.detail.scaleX);
+                    // console.log(event.detail.scaleY);
+                    cropImageButton.style.display = 'block';
+                }
+            });
+
+
+        }
+        // Initialize Cropper on CLick On Image
+        // function cropInitOnClick(selector) {
+        //   if(cropperImageInitCanvas.cropper){
+        //       cropperImageInitCanvas.cropper.destroy();
+        //       // cropImageButton.style.display = 'none';
+        //       cropInit(selector);
+        //       // addCropButton();
+        //       // cropImageButton.style.display = 'block';
+        //   } else {
+        //       cropInit(selector);
+        //       // addCropButton();
+        //       // cropImageButton.style.display = 'block';
+        //   }
+        // }
+        // Crop Image
+        function image_crop() {
+            if (cropperImageInitCanvas.cropper) {
+                var cropcanvas = cropperImageInitCanvas.cropper.getCroppedCanvas({ width: 250, height: 250 });
+                // document.getElementById('cropImages').appendChild(cropcanvas);
+                var ctx = cropcanvas.getContext('2d');
+                var imgData = ctx.getImageData(0, 0, cropcanvas.width, cropcanvas.height);
+                // var image = document.getElementById(c);
+                c.width = cropcanvas.width;
+                c.height = cropcanvas.height;
+                var ctx = c.getContext('2d');
+                ctx.putImageData(imgData, 0, 0);
+                cropperImageInitCanvas.cropper.destroy();
+                cropperImageInitCanvas.width = 0;
+                cropperImageInitCanvas.height = 0;
+                cropImageButton.style.display = 'none';
+                var allCloseButtons = document.querySelectorAll('.singleImageCanvasCloseBtn');
+                for (let element of allCloseButtons) {
+                    element.style.display = 'block';
+                }
+                urlConversion();
+                // cropperImageInitCanvas.style.display = 'none';
+            } else {
+                alert('Please select any Image you want to crop');
+            }
+        }
+        cropImageButton.addEventListener("click", function () {
+            image_crop();
+        });
+        // Image Close/Remove
+        function removeSingleCanvas(selector) {                         
+            if (dt.items.length == 1){
+                if (cropperImageInitCanvas.cropper) {
+                    cropperImageInitCanvas.cropper.destroy();                    
+                }
+                document.getElementById('cropper').style.display = 'none';
+            } 
+            removeIndex = 0;
+            for(var i = 0; i < dt.items.length; i++){
+                if(selector.id == dt.files[i].name){
+                    removeIndex = i;
+                    break;
+                }
+            }                           
+            dt.items.remove(removeIndex)            
+            document.getElementById('imageCropFileInput').files = dt.files;
+            selector.parentNode.remove();
+            urlConversion();            
+        }
+        // Dynamically Add Crop Btn
+        // function addCropButton() {
+        //   // add crop button
+        //     var cropBtn = document.createElement('button');
+        //     cropBtn.setAttribute('type', 'button');
+        //     cropBtn.id = 'cropImageBtn';
+        //     cropBtn.className = 'btn btn-block crop-button';
+        //     var cropBtntext = document.createTextNode('crop');
+        //     cropBtn.appendChild(cropBtntext);
+        //     document.getElementById('cropper').appendChild(cropBtn);
+        //     cropBtn.onclick = function() { image_crop(cropBtn.id); };
+        // }
+        // Get Converted Url
+        function urlConversion() {
+            var allImageCanvas = document.querySelectorAll('.singleImageCanvas');
+            var convertedUrl = '';
+            for (let element of allImageCanvas) {
+                convertedUrl += element.toDataURL('image/jpeg');
+                convertedUrl += 'img_url';
+            }
+            document.getElementById('profile_img_data').value = convertedUrl;
+        }
+
+
+//# sourceURL=pen.js
+    </script>
+
+
+
+</body>
+
+</html>
+
+<script>
+    $('.reserve-button').click(function(){
+        var form_data = new FormData();
+        var totalfiles = $('#profile_img_data').val();
+        console.log(totalfiles);
+        form_data.append("files[]", totalfiles);
+        console.log(form_data);
+        $.ajax
+        ({ 
+            url: 'reservebook.php',
+            data: form_data,
+            type: 'post',
+            contentType: false,
+            processData: false,
+            success: function(result)
+            {
+               
+            }
+        });
+    });
+    </script>
